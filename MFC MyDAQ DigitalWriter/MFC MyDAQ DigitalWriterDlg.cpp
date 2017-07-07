@@ -6,7 +6,9 @@
 #include "MFC MyDAQ DigitalWriter.h"
 #include "MFC MyDAQ DigitalWriterDlg.h"
 #include "afxdialogex.h"
+#include <fstream>
 #include <string>
+#include <list>
 #include <NIDAQmx.h>
 
 using namespace std;
@@ -57,7 +59,6 @@ END_MESSAGE_MAP()
 
 CMFCMyDAQDigitalWriterDlg::CMFCMyDAQDigitalWriterDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_MFCMYDAQDIGITALWRITER_DIALOG, pParent)
-	, mydaq_name(_T(""))
 	, box1(FALSE)
 	, box2(FALSE)
 	, box3(FALSE)
@@ -70,24 +71,30 @@ CMFCMyDAQDigitalWriterDlg::CMFCMyDAQDigitalWriterDlg(CWnd* pParent /*=NULL*/)
 void CMFCMyDAQDigitalWriterDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Text(pDX, IDC_MYDAQ_NAME, mydaq_name);
 	DDX_Check(pDX, IDC_CHECK1, box1);
 	DDX_Check(pDX, IDC_CHECK2, box2);
 	DDX_Check(pDX, IDC_CHECK3, box3);
 	DDX_Check(pDX, IDC_CHECK4, box4);
 	DDX_Text(pDX, IDC_HEX_INPUT, hex_value);
+	DDX_Control(pDX, IDC_MYDAQCOMBO, devicesCombobox);
 }
 
 BEGIN_MESSAGE_MAP(CMFCMyDAQDigitalWriterDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_EN_CHANGE(IDC_MYDAQ_NAME, &CMFCMyDAQDigitalWriterDlg::OnChangeMydaqName)
 	ON_BN_CLICKED(IDC_CHECK1, &CMFCMyDAQDigitalWriterDlg::OnBnClickedCheck1)
 	ON_BN_CLICKED(IDC_CHECK2, &CMFCMyDAQDigitalWriterDlg::OnBnClickedCheck2)
 	ON_BN_CLICKED(IDC_CHECK3, &CMFCMyDAQDigitalWriterDlg::OnBnClickedCheck3)
 	ON_BN_CLICKED(IDC_CHECK4, &CMFCMyDAQDigitalWriterDlg::OnBnClickedCheck4)
 	ON_EN_CHANGE(IDC_HEX_INPUT, &CMFCMyDAQDigitalWriterDlg::OnChangeHexInput)
+	ON_CBN_DROPDOWN(IDC_MYDAQCOMBO, &CMFCMyDAQDigitalWriterDlg::OnCbnDropdownMydaqcombo)
+	ON_CBN_SELCHANGE(IDC_MYDAQCOMBO, &CMFCMyDAQDigitalWriterDlg::OnCbnSelchangeMydaqcombo)
+	ON_BN_CLICKED(IDC_BUTTONTOGGLE, &CMFCMyDAQDigitalWriterDlg::OnBnClickedButtontoggle)
+	ON_BN_CLICKED(IDC_BUTTONROTATE, &CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonrotate)
+	ON_BN_CLICKED(IDC_BUTTONSHIFTL, &CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonshiftl)
+	ON_BN_CLICKED(IDC_BUTTONSHIFTR, &CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonshiftr)
+	ON_BN_CLICKED(IDC_BUTTONLOADFILE, &CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonloadfile)
 END_MESSAGE_MAP()
 
 
@@ -122,24 +129,14 @@ BOOL CMFCMyDAQDigitalWriterDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	// TODO: Add extra initialization here
-	UpdateData(TRUE);
-	mydaq_name = "myDAQ1";
-	char* mydaq_name_c = CMFCMyDAQDigitalWriterDlg::convertToCharArr(mydaq_name);
-	UpdateData(FALSE);
-
 	led = 0;
-	writeTask = CMFCMyDAQDigitalWriterDlg::createTask(mydaq_name_c);
-	if (writeTask != NULL) {
-		CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
-	}
-	else {
-		UpdateData(TRUE);
-		mydaq_name = "Falscher Name";
-		UpdateData(FALSE);
-	}
+	UpdateData(TRUE);
+	hex_value = "0";
+	UpdateData(FALSE);
+	updateDevicesCombobox();
+	updateTask();
 
-	return TRUE;  // return TRUE  unless you set the focus to a control
+	return TRUE;  // return TRUE unless you set the focus to a control
 }
 
 void CMFCMyDAQDigitalWriterDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -181,24 +178,21 @@ void CMFCMyDAQDigitalWriterDlg::OnPaint()
 	else
 	{
 		CPaintDC dc(this);
+
+		CRect rect;
+		GetClientRect(&rect);
+
+		int circleDiameter = (rect.Width() - 80)/4;
+		int padding = 5;
+
 		CBrush off(RGB(255, 255, 255));
 		CBrush on(RGB(255, 0, 0));
 
-		if ((led & (1 << 4)) == (1 << 4)) dc.SelectObject(&on);
-		else dc.SelectObject(&off);
-		dc.Ellipse(100, 100, 140, 140);
-
-		if ((led & (1 << 5)) == (1 << 5)) dc.SelectObject(&on);
-		else dc.SelectObject(&off);
-		dc.Ellipse(160, 100, 200, 140);
-
-		if ((led & (1 << 6)) == (1 << 6)) dc.SelectObject(&on);
-		else dc.SelectObject(&off);
-		dc.Ellipse(220, 100, 260, 140);
-
-		if ((led & (1 << 7)) == (1 << 7)) dc.SelectObject(&on);
-		else dc.SelectObject(&off);
-		dc.Ellipse(280, 100, 320, 140);
+		for (int i = 0; i < 4; i++) {
+			if ((led & (1 << (i+4))) == (1 << (i+4))) dc.SelectObject(&on);
+			else dc.SelectObject(&off);
+			dc.Ellipse(40 + (i*circleDiameter)+padding, 125+padding, 40 + ((i + 1)*circleDiameter)-padding, 125 + (circleDiameter-padding));
+		}
 
 		CDialogEx::OnPaint();
 	}
@@ -211,15 +205,6 @@ HCURSOR CMFCMyDAQDigitalWriterDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CMFCMyDAQDigitalWriterDlg::OnChangeMydaqName()
-{
-	// TODO:
-	// 1. DAQmxClearTask(writeTask);
-	// UpdateData(TRUE);
-	// 2. writeTask = createWriteTask(mydaq_name);
-	// UpdateData(FALSE);
-}
-
 TaskHandle CMFCMyDAQDigitalWriterDlg::createTask(char* name)
 {
 	TaskHandle  Task = 0;
@@ -228,6 +213,7 @@ TaskHandle CMFCMyDAQDigitalWriterDlg::createTask(char* name)
 	s += "/port0/line4:7";
 
 	int32 error = 0;
+	DAQmxClearTask(writeTask);
 	error = DAQmxCreateTask("", &Task);
 	if (error != 0)
 		return NULL;
@@ -321,45 +307,33 @@ void CMFCMyDAQDigitalWriterDlg::OnChangeHexInput()
 	UpdateData(TRUE);
 
 	int hex;
-	char* hex_c = CMFCMyDAQDigitalWriterDlg::convertToCharArr(hex_value);
-	sscanf_s(hex_c, "%x", &hex);
+	if (hex_value.GetLength() > 0) {
+		char* hex_c = (CT2CA)hex_value;
+		sscanf_s(hex_c, "%x", &hex);
 
-	if (hex >= 0 && hex <= 15) {
-		led = (hex*16);
-		if ((led & (1 << 4)) == (1 << 4)) box1 = true;
-		else box1 = false;
+		if (hex >= 0 && hex <= 15) {
+			led = (hex * 16);
+			if ((led & (1 << 4)) == (1 << 4)) box1 = true;
+			else box1 = false;
 
-		if ((led & (1 << 5)) == (1 << 5)) box2 = true;
-		else box2 = false;
+			if ((led & (1 << 5)) == (1 << 5)) box2 = true;
+			else box2 = false;
 
-		if ((led & (1 << 6)) == (1 << 6)) box3 = true;
-		else box3 = false;
+			if ((led & (1 << 6)) == (1 << 6)) box3 = true;
+			else box3 = false;
 
-		if ((led & (1 << 7)) == (1 << 7)) box4 = true;
-		else box4 = false;
+			if ((led & (1 << 7)) == (1 << 7)) box4 = true;
+			else box4 = false;
+		}
+		else {
+			hex_value = "";
+		}
+		UpdateData(FALSE);
+
+		CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+		Invalidate();
 	}
-	else {
-		hex_value = "";
-	}
-	UpdateData(FALSE);
-
-	CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
-	Invalidate();
 }
-
-char* CMFCMyDAQDigitalWriterDlg::convertToCharArr(CString str)
-{
-	int x = 0;
-	string s = "";
-	while (x < str.GetLength()) {
-		char c = str.GetAt(x++);
-		s += c;
-	}
-	char * output = (char *)calloc(str.GetLength() + 1, sizeof(char));
-	memcpy(output, s.c_str(), str.GetLength() + 1);
-	return output;
-}
-
 
 CString CMFCMyDAQDigitalWriterDlg::convertToHexString(int zahl)
 {
@@ -368,4 +342,233 @@ CString CMFCMyDAQDigitalWriterDlg::convertToHexString(int zahl)
 	_itoa_s(zahl, hexString, 16);
 	s = hexString;
 	return s.MakeUpper();
+}
+
+list<string> CMFCMyDAQDigitalWriterDlg::getConnectedDevices()
+{
+	char namesBuffer[1000] = { '\0' };
+	DAQmxGetSysDevNames(namesBuffer, 1000);
+	string names(namesBuffer);
+	list<string> devices = splitString(names, ',', 2);
+	return devices;
+}
+
+
+list<string> CMFCMyDAQDigitalWriterDlg::splitString(string value, char separator, int spacing)
+{
+	list<string> values;
+	if (value.length() > 0) {
+		size_t found = value.find_first_of(separator);
+		while (found != string::npos)
+		{
+			values.push_back(value.substr(0, found));
+			value = value.substr(found + spacing);
+			found = value.find_first_of(separator);
+		}
+		values.push_back(value);
+	}
+	return values;
+}
+
+void CMFCMyDAQDigitalWriterDlg::OnCbnDropdownMydaqcombo()
+{
+	updateDevicesCombobox();
+}
+
+void CMFCMyDAQDigitalWriterDlg::updateDevicesCombobox() {
+	devicesCombobox.ResetContent();
+	list<string> devices = getConnectedDevices();
+	list<string>::iterator it;
+	for (it = devices.begin(); it != devices.end(); it++) {
+		devicesCombobox.AddString((LPCTSTR)(CA2T)(*it).c_str());
+	}
+	if (devices.size() > 0) {
+		devicesCombobox.SetCurSel(0);
+	}
+	else {
+		AfxMessageBox(L"No device connected");
+	}
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::OnCbnSelchangeMydaqcombo()
+{
+	updateTask();
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::updateTask() {
+	int idxC = devicesCombobox.GetCurSel();
+	if (idxC >= 0) {
+		CString myDAQname;
+		devicesCombobox.GetLBText(idxC, myDAQname);
+		writeTask = CMFCMyDAQDigitalWriterDlg::createTask((CT2CA)myDAQname);
+		if (writeTask != NULL) {
+			CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+		}
+	}
+}
+
+void CMFCMyDAQDigitalWriterDlg::OnBnClickedButtontoggle()
+{
+	UpdateData(TRUE);
+	box1 = !box1;
+	box2 = !box2;
+	box3 = !box3;
+	box4 = !box4;
+
+	led = 0;
+	if (box1)
+		led += (1 << 4);
+	if (box2)
+		led += (1 << 5);
+	if (box3)
+		led += (1 << 6);
+	if (box4)
+		led += (1 << 7);
+
+	hex_value = CMFCMyDAQDigitalWriterDlg::convertToHexString(led / 16);
+	CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+	UpdateData(FALSE);
+	Invalidate();
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonrotate()
+{
+	UpdateData(TRUE);
+	bool b1=box1, b2=box2, b3=box3, b4=box4;
+
+	box1 = b4;
+	box2 = b3;
+	box3 = b2;
+	box4 = b1;
+
+	led = 0;
+	if (box1)
+		led += (1 << 4);
+	if (box2)
+		led += (1 << 5);
+	if (box3)
+		led += (1 << 6);
+	if (box4)
+		led += (1 << 7);
+
+	hex_value = CMFCMyDAQDigitalWriterDlg::convertToHexString(led / 16);
+	CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+	UpdateData(FALSE);
+	Invalidate();
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonshiftl()
+{
+	UpdateData(TRUE);
+	bool b1 = box1, b2 = box2, b3 = box3, b4 = box4;
+
+	box1 = b2;
+	box2 = b3;
+	box3 = b4;
+	box4 = b1;
+
+	led = 0;
+	if (box1)
+		led += (1 << 4);
+	if (box2)
+		led += (1 << 5);
+	if (box3)
+		led += (1 << 6);
+	if (box4)
+		led += (1 << 7);
+
+	hex_value = CMFCMyDAQDigitalWriterDlg::convertToHexString(led / 16);
+	CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+	UpdateData(FALSE);
+	Invalidate();
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonshiftr()
+{
+	UpdateData(TRUE);
+	bool b1 = box1, b2 = box2, b3 = box3, b4 = box4;
+
+	box1 = b4;
+	box2 = b1;
+	box3 = b2;
+	box4 = b3;
+
+	led = 0;
+	if (box1)
+		led += (1 << 4);
+	if (box2)
+		led += (1 << 5);
+	if (box3)
+		led += (1 << 6);
+	if (box4)
+		led += (1 << 7);
+
+	hex_value = CMFCMyDAQDigitalWriterDlg::convertToHexString(led / 16);
+	CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+	UpdateData(FALSE);
+	Invalidate();
+}
+
+void CMFCMyDAQDigitalWriterDlg::readFromFile() {
+	string filePath, defaultExtension = "", defaultName = "", extensions = "";
+	CFileDialog dlg(true, 
+		(LPCTSTR)(CA2T)defaultExtension.c_str(), 
+		(LPCTSTR)(CA2T)defaultName.c_str(), 
+		OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR, 
+		(LPCTSTR)(CA2T)extensions.c_str());
+
+	auto result = dlg.DoModal();
+	if (result != IDOK) {
+		// TODO: failed?
+	} else {
+		filePath.assign((CT2CA)dlg.GetPathName());
+		ifstream file(filePath);
+		string str;
+		while (getline(file, str))
+		{
+			if (str.length() == 4) {
+
+				UpdateData(TRUE);
+				box1 = !(str.at(0) == '0');
+				box2 = !(str.at(1) == '0');
+				box3 = !(str.at(2) == '0');
+				box4 = !(str.at(3) == '0');
+
+				led = 0;
+				if (box1)
+					led += (1 << 4);
+				if (box2)
+					led += (1 << 5);
+				if (box3)
+					led += (1 << 6);
+				if (box4)
+					led += (1 << 7);
+
+				hex_value = CMFCMyDAQDigitalWriterDlg::convertToHexString(led / 16);
+				CMFCMyDAQDigitalWriterDlg::writeDO(writeTask, led);
+				UpdateData(FALSE);
+				Invalidate();
+			}
+			else {
+				AfxMessageBox(L"Wrong data format in file.");
+			}
+			Sleep(100);
+		}
+	}
+}
+
+
+void CMFCMyDAQDigitalWriterDlg::OnBnClickedButtonloadfile()
+{
+	readFromFile();
+}
+
+
+CMFCMyDAQDigitalWriterDlg::~CMFCMyDAQDigitalWriterDlg() {
+	DAQmxClearTask(writeTask);
 }

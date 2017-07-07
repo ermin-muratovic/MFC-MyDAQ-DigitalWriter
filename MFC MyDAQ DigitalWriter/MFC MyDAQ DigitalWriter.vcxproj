@@ -190,6 +190,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="data.txt" />
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +215,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="Informatik Projekt Digital Writer.docx" />
+    <None Include="Informatik Projekt Digital Writer.pptx" />
     <None Include="res\MFCMyDAQDigitalWriter.rc2" />
   </ItemGroup>
   <ItemGroup>

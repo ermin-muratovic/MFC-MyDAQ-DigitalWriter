@@ -16,6 +16,13 @@
 #define IDC_HEXInput                    1006
 #define IDC_HEX_INPUT                   1006
 #define IDC_HEX_LABEL                   1007
+#define IDC_MYDAQCOMBO                  1009
+#define IDC_BUTTONTOGGLE                1010
+#define IDC_BUTTON1                     1011
+#define IDC_BUTTONLOADFILE              1011
+#define IDC_BUTTONROTATE                1013
+#define IDC_BUTTONSHIFTL                1014
+#define IDC_BUTTONSHIFTR                1015
 
 // Next default values for new objects
 // 
@@ -23,7 +30,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_CONTROL_VALUE         1012
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

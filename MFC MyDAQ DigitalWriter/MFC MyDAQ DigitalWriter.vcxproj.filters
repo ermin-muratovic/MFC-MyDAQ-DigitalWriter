@@ -16,6 +16,9 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
+    <Text Include="data.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MFC MyDAQ DigitalWriter.h">
@@ -55,6 +58,12 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="ClassDiagram.cd" />
+    <None Include="Informatik Projekt Digital Writer.docx">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Informatik Projekt Digital Writer.pptx">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\MFC MyDAQ DigitalWriter.ico">
