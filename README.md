@@ -15,7 +15,7 @@ Clone this project and execute in Visual Studio or download and start DigitalWri
 
 ## Authors
 
-* [**Ermin Muratovic**](https://github.com/ermin-muratovic) - *owner*
+* [**Ermin Muratovic**](https://github.com/ermin-muratovic)
 * [**Patrick Simtschitsch**]()
 
 ## License
